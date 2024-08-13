@@ -148,6 +148,7 @@ module ApplicationService
     end
 
     def valid_params
+      validate_nested_inputs!
       return Result.failure(errors.full_messages.join(', '), :invalid_input) unless valid?
 
       Result.success(@params)
@@ -184,8 +185,22 @@ module ApplicationService
         value.is_a?(Hash) ? value : {}
       when 'Array'
         value.is_a?(Array) ? value : []
+      when 'Input'
+        value.is_a?(Input) ? value : type.new(value)
       else
         value
+      end
+    end
+
+    def validate_nested_inputs!
+      @attributes.each do |attribute|
+        nested_input = send(attribute.name)
+        next unless nested_input.is_a?(Input)
+
+        nested_input_valid_result = nested_input.valid_params
+        if nested_input_valid_result.failure?
+          errors.add(attribute.name, "is invalid: #{nested_input_valid_result.error}")
+        end
       end
     end
   end
